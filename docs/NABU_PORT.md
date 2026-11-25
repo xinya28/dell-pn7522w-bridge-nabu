@@ -83,8 +83,13 @@ C 程序（`src/dell_pen_bridge.c`）只按**字节序号**解释数据，不关
 ## 现状
 
 - 仓库已 fork 并改名为 `dell-pn7522w-bridge-nabu`；
-- 采样点已参数化，`probe.conf` 里仍是 liuqin 的值（nabu 值待第 1 步拿到驱动后填写）；
-- 未在 nabu 上实机验证。
+- **顶部蓝牙键已在 nabu 上跑通**：设备名是 `Dell PN7522W`（不是 `Dell PN7522W Keyboard`），
+  已改为前缀匹配，实测单击/双击/长按各产生一次手势（`events=3, last=long`）；
+- **侧键不可用**：`probe.conf` 的 `PROBE_MODULE` 留空，`check.sh`/`control.sh`
+  不再要求 kprobe，模块只跑顶部键；侧键桥接不启动；
+- 二进制改用 NDK clang 交叉编译（`aarch64-linux-android30`，动态链接 bionic），
+  不再依赖 Zig/musl；
+- 未在 liuqin 上回归验证。
 
 ## 2026-11-25 实机结论（nabu，HyperOS OS3.0.304.0.WNSCNXM）
 

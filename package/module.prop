@@ -1,6 +1,6 @@
 id=dell_pen_bridge_liuqin
 name=Dell PN7522W Side Buttons for Pad 5 (nabu)
-version=0.2.0
-versionCode=5
+version=0.2.1
+versionCode=6
 author=Dell Pen Bridge contributors
-description=新增顶部蓝牙键 WebUI 设置。戴尔 PN7522W 侧键桥接至焦点笔 Plus。仅在指定环境实测，其他版本兼容性未知；动作按钮可暂停/恢复。
+description=nabu 适配：顶部蓝牙键可用（WebUI 配置单击/双击/长按）；本内核无 kprobe，侧键桥接不启用。

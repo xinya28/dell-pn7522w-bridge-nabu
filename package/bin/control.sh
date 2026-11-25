@@ -9,19 +9,21 @@ BB=/data/adb/ksu/bin/busybox
 NATIVE=$MODDIR/bin/dell-pen-bridge
 MODE=${1:-status}
 
-# 采样点由 bin/probe.conf 决定；下面只是 liuqin 的缺省值。
+# 采样点由 bin/probe.conf 决定；PROBE_MODULE 为空表示没有可用的采样点。
 [ -f "$MODDIR/bin/probe.conf" ] && . "$MODDIR/bin/probe.conf"
-: "${PROBE_MODULE:=nt36532_touch}"
-: "${PROBE_SYMBOL:=nvt_ts_work_func\$5ae3b2be10c8de59fcf1b76a64203422}"
-: "${PROBE_OFFSET:=0x7fc}"
-: "${PROBE_B66:=+210}"
-: "${PROBE_B71:=+215}"
-: "${PROBE_B72:=+216}"
-: "${PROBE_B75:=+219}"
-: "${PROBE_B76:=+220}"
-: "${PROBE_B77:=+221}"
-: "${PROBE_FILTER:=b66 == 1 || b66 == 255}"
+PROBE_MODULE=${PROBE_MODULE:-}
+PROBE_SYMBOL=${PROBE_SYMBOL:-}
+PROBE_OFFSET=${PROBE_OFFSET:-0x0}
+PROBE_B66=${PROBE_B66:-+0}
+PROBE_B71=${PROBE_B71:-+0}
+PROBE_B72=${PROBE_B72:-+0}
+PROBE_B75=${PROBE_B75:-+0}
+PROBE_B76=${PROBE_B76:-+0}
+PROBE_B77=${PROBE_B77:-+0}
+PROBE_FILTER=${PROBE_FILTER:-b66 == 1 || b66 == 255}
 PROBE_EVENT="p:$GROUP/raw $PROBE_MODULE:$PROBE_SYMBOL+$PROBE_OFFSET b66=$PROBE_B66(\$stack):x8 b71=$PROBE_B71(\$stack):x8 b72=$PROBE_B72(\$stack):x8 b75=$PROBE_B75(\$stack):x8 b76=$PROBE_B76(\$stack):x8 b77=$PROBE_B77(\$stack):x8"
+NO_PROBE=0
+if [ -z "$PROBE_MODULE" ] || [ ! -w "$TRACE/kprobe_events" ]; then NO_PROBE=1; fi
 
 setup_runtime() {
   [ ! -L "$RUNDIR" ] || return 1
@@ -99,6 +101,7 @@ cleanup_run() {
 }
 
 run_service() {
+  if [ "$NO_PROBE" = 1 ]; then echo '没有可用的采样点，侧键桥接不启动。'; exit 0; fi
   setup_runtime || exit 1
   exec 9> "$RUNDIR/service.lock" || exit 1
   "$BB" flock -n 9 || { echo '已有桥接进程运行'; exit 0; }
@@ -148,6 +151,10 @@ run_service() {
 
 start_service() {
   "$BB" sh "$MODDIR/bin/top-control.sh" start
+  if [ "$NO_PROBE" = 1 ]; then
+    echo '此内核没有可用的 kprobe：侧键桥接不可用，已启用顶部键。'
+    return 0
+  fi
   setup_runtime || return 1
   for flag in disable remove paused; do
     if [ -e "$MODDIR/$flag" ]; then echo '模块当前已停用或暂停'; return 1; fi
@@ -160,6 +167,7 @@ start_service() {
 
 stop_service() {
   "$BB" sh "$MODDIR/bin/top-control.sh" stop
+  if [ "$NO_PROBE" = 1 ]; then echo '顶部键已停止。'; return 0; fi
   setup_runtime || return 1
   touch "$RUNDIR/stop"
   if service_alive; then kill -TERM "$PID" 2>/dev/null; fi
@@ -195,6 +203,18 @@ case "$MODE" in
     ;;
   stop) stop_service ;;
   toggle)
+    if [ "$NO_PROBE" = 1 ]; then
+      if [ -e "$MODDIR/paused" ]; then
+        rm -f "$MODDIR/paused"
+        "$BB" sh "$MODDIR/bin/top-control.sh" start
+        echo '已恢复顶部键。'
+      else
+        touch "$MODDIR/paused"
+        "$BB" sh "$MODDIR/bin/top-control.sh" stop
+        echo '已暂停顶部键。'
+      fi
+      exit 0
+    fi
     if [ -e "$MODDIR/disable" ] || [ -e "$MODDIR/remove" ]; then
       echo '请先在 KernelSU 启用模块，或取消卸载。'; exit 1
     fi
@@ -210,6 +230,7 @@ case "$MODE" in
     fi
     ;;
   status)
+    if [ "$NO_PROBE" = 1 ]; then "$BB" sh "$MODDIR/bin/top-config.sh" status; exit 0; fi
     if native_alive; then echo '运行中'; else echo '未运行'; fi
     [ ! -f "$RUNDIR/status.json" ] || cat "$RUNDIR/status.json"
     ;;

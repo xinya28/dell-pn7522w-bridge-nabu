@@ -53,7 +53,7 @@ static int device(void) {
         snprintf(p,sizeof(p),"/dev/input/%s",e->d_name);
         int fd = open(p,O_RDONLY|O_NONBLOCK|O_CLOEXEC);
         if (fd < 0) continue;
-        if (ioctl(fd,EVIOCGNAME(sizeof(name)),name) >= 0 && !strcmp(name,"Dell PN7522W Keyboard") &&
+        if (ioctl(fd,EVIOCGNAME(sizeof(name)),name) >= 0 && !strncmp(name,"Dell PN7522W",12) &&
             ioctl(fd,EVIOCGID,&id) == 0 && id.bustype == BUS_BLUETOOTH && id.vendor == 0x413c && id.product == 0x8207) {
             int clockid = CLOCK_MONOTONIC;
             if (ioctl(fd,EVIOCSCLOCKID,&clockid) == 0) { found = fd; break; }

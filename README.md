@@ -2,8 +2,13 @@
 
 > 本仓库是 [FlowerLing/dell-pen-bridge-liuqin](https://github.com/FlowerLing/dell-pen-bridge-liuqin)
 > 的 fork，目标设备改为小米平板 5（`nabu`）+ 水龙内核。采样点已抽到
-> `package/bin/probe.conf`，nabu 的具体数值待填，进展与取数方法见
+> `package/bin/probe.conf`，进展与取数方法见
 > [docs/NABU_PORT.md](docs/NABU_PORT.md)。
+>
+> 当前状态（2026-11-25，实测）：**顶部蓝牙键可用**（设备名 `Dell PN7522W`，
+> 已改成前缀匹配并通过单击/双击/长按验证）；**侧键不可用**——moon 水龙内核
+> 关了 `CONFIG_KPROBES`，且触控驱动不上报 `BTN_STYLUS/BTN_STYLUS2`，
+> 用户态拿不到侧键状态。侧键要等内核支持或改内核驱动。
 
 开发者资料：[侧键与顶部蓝牙键输入协议、实测事件和接入说明](docs/INPUT_PROTOCOL.md)。
 

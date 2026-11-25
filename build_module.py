@@ -1,4 +1,4 @@
-"""Build/package the module locally; never connects to or changes a device."""
+﻿"""Build/package the module locally; never connects to or changes a device."""
 from __future__ import annotations
 
 import argparse
@@ -160,7 +160,7 @@ def main() -> None:
         raise ValueError("Top-button binary checksum mismatch")
     sync_distribution_text()
     DIST.mkdir(exist_ok=True)
-    output = DIST / f"Dell-PN7522W-liuqin-KernelSU-v{version}.zip"
+    output = DIST / f"Dell-PN7522W-nabu-KernelSU-v{version}.zip"
     try:
         files = make_archive(output, native_digest)
     except Exception:
