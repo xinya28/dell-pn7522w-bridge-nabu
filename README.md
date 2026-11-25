@@ -1,4 +1,9 @@
-# Dell Pen Bridge for Xiaomi Pad 6 Pro
+# Dell Pen Bridge for Xiaomi Pad 5 (nabu)
+
+> 本仓库是 [FlowerLing/dell-pen-bridge-liuqin](https://github.com/FlowerLing/dell-pen-bridge-liuqin)
+> 的 fork，目标设备改为小米平板 5（`nabu`）+ 水龙内核。采样点已抽到
+> `package/bin/probe.conf`，nabu 的具体数值待填，进展与取数方法见
+> [docs/NABU_PORT.md](docs/NABU_PORT.md)。
 
 开发者资料：[侧键与顶部蓝牙键输入协议、实测事件和接入说明](docs/INPUT_PROTOCOL.md)。
 

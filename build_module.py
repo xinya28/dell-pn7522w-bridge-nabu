@@ -21,7 +21,7 @@ TEXT_SUFFIXES = {".sh", ".prop", ".md", ".c", ".sha256", ".txt", ".html", ".css"
 TEXT_NAMES = {"LICENSE"}
 EXPECTED_FILES = {
     "action.sh", "bin/check.sh", "bin/control.sh", "bin/dell-pen-bridge",
-    "bin/dell-pen-bridge.sha256", "customize.sh", "module.prop", "README.md",
+    "bin/dell-pen-bridge.sha256", "bin/probe.conf", "customize.sh", "module.prop", "README.md",
     "service.sh", "skip_mount", "src/dell_pen_bridge.c", "uninstall.sh",
     "VALIDATION.md", "LICENSE", "THIRD_PARTY_NOTICES.md",
     "LICENSES/Zig-MIT.txt", "LICENSES/musl-COPYRIGHT.txt",

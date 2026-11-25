@@ -9,6 +9,20 @@ BB=/data/adb/ksu/bin/busybox
 NATIVE=$MODDIR/bin/dell-pen-bridge
 MODE=${1:-status}
 
+# 采样点由 bin/probe.conf 决定；下面只是 liuqin 的缺省值。
+[ -f "$MODDIR/bin/probe.conf" ] && . "$MODDIR/bin/probe.conf"
+: "${PROBE_MODULE:=nt36532_touch}"
+: "${PROBE_SYMBOL:=nvt_ts_work_func\$5ae3b2be10c8de59fcf1b76a64203422}"
+: "${PROBE_OFFSET:=0x7fc}"
+: "${PROBE_B66:=+210}"
+: "${PROBE_B71:=+215}"
+: "${PROBE_B72:=+216}"
+: "${PROBE_B75:=+219}"
+: "${PROBE_B76:=+220}"
+: "${PROBE_B77:=+221}"
+: "${PROBE_FILTER:=b66 == 1 || b66 == 255}"
+PROBE_EVENT="p:$GROUP/raw $PROBE_MODULE:$PROBE_SYMBOL+$PROBE_OFFSET b66=$PROBE_B66(\$stack):x8 b71=$PROBE_B71(\$stack):x8 b72=$PROBE_B72(\$stack):x8 b75=$PROBE_B75(\$stack):x8 b76=$PROBE_B76(\$stack):x8 b77=$PROBE_B77(\$stack):x8"
+
 setup_runtime() {
   [ ! -L "$RUNDIR" ] || return 1
   if [ ! -d "$RUNDIR" ]; then mkdir -m 700 "$RUNDIR" || return 1; fi
@@ -110,8 +124,8 @@ run_service() {
   echo nop > "$INSTANCE/current_tracer" || exit 1
   echo boot > "$INSTANCE/trace_clock" || exit 1
   echo 128 > "$INSTANCE/buffer_size_kb" || exit 1
-  printf '%s\n' 'p:dell_pen_bridge_liuqin/raw nt36532_touch:nvt_ts_work_func$5ae3b2be10c8de59fcf1b76a64203422+0x7fc b66=+210($stack):x8 b71=+215($stack):x8 b72=+216($stack):x8 b75=+219($stack):x8 b76=+220($stack):x8 b77=+221($stack):x8' >> "$TRACE/kprobe_events" || exit 1
-  echo 'b66 == 1 || b66 == 255' > "$INSTANCE/events/$GROUP/raw/filter" || exit 1
+  printf '%s\n' "$PROBE_EVENT" >> "$TRACE/kprobe_events" || exit 1
+  printf '%s\n' "$PROBE_FILTER" > "$INSTANCE/events/$GROUP/raw/filter" || exit 1
   echo 1 > "$INSTANCE/events/$GROUP/raw/enable" || exit 1
   "$NATIVE" --trace "$INSTANCE/trace_pipe" --stop-file "$RUNDIR/stop" \
     --status "$RUNDIR/status.json" --lock "$RUNDIR/native.lock" \
