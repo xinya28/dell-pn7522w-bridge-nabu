@@ -85,3 +85,46 @@ C 程序（`src/dell_pen_bridge.c`）只按**字节序号**解释数据，不关
 - 仓库已 fork 并改名为 `dell-pn7522w-bridge-nabu`；
 - 采样点已参数化，`probe.conf` 里仍是 liuqin 的值（nabu 值待第 1 步拿到驱动后填写）；
 - 未在 nabu 上实机验证。
+
+## 2026-11-25 实机结论（nabu，HyperOS OS3.0.304.0.WNSCNXM）
+
+测试机内核 `4.14.180-moon-os3-ga5805c039`（moon clang 20.0.0）。结论：**原项目的
+kprobe 方案在这台机器上无法运行**，需要内核层改动。
+
+1. 输入节点：笔是 `NVTCapacitivePen`（`/dev/input/event4`），能力位里**声明**了
+   `BTN_STYLUS`、`BTN_STYLUS2`，但实测从不产生这两个事件。用
+   `getevent -lt` 抓全部输入设备、让笔保持悬停并按两个侧键，只看到
+   `ABS_X/ABS_Y/ABS_TILT_X/ABS_TILT_Y/ABS_DISTANCE` 和 `BTN_DIGI`，
+   触屏节点（event3）也没有任何对应事件。侧键状态在驱动里被丢弃。
+2. 内核配置（`/proc/config.gz`）：
+
+   ```text
+   # CONFIG_KPROBES is not set
+   # CONFIG_FUNCTION_TRACER is not set
+   CONFIG_BPF=y
+   CONFIG_BPF_EVENTS=y
+   CONFIG_MODULES=y
+   # CONFIG_MODULE_SIG is not set
+   ```
+
+   `/sys/kernel/tracing` 下只有 `uprobe_events`，没有 `kprobe_events`，
+   所以挂 kprobe 读笔帧这条路直接不通；没有 kprobe 也就没有 BPF kprobe 程序可用。
+3. `/proc/kallsyms` 的地址被内核打散（root 且 `kptr_restrict=0` 也拿不到真实地址），
+   不能靠 kallsyms 直接定位函数。但 `D:\Devices\Mipad5\boot.img` 里就是这颗内核
+   （`Linux version 4.14.180-moon-os3-ga5805c039`，ramdisk 是 TWRP），
+   可以用字符串 `nvt_ts_work_func` 的 `adrp/add` 引用在 Image 里定位函数再反汇编。
+
+### 可行的后续路线（按代价排序）
+
+- **A. 内核模块 inline hook**：`CONFIG_MODULES=y` 且无模块签名，理论上可加载模块，
+  用 `kallsyms_lookup_name` 找 `nvt_ts_work_func`，把函数头改成跳转；没有 kprobe/ftrace
+  可用，只能改内核 text。风险高，错误会 panic。
+- **B. 改内核驱动后重编内核**：拿到 moon 内核源码，在 nt36523 驱动里把侧键上报成
+  `BTN_STYLUS/BTN_STYLUS2`，重编并刷 boot。最干净，但要源码、clang 20 工具链，
+  且 bootloader 必须能刷（当前 `ro.boot.flash.locked=1`，需确认）。
+- **C. 放弃侧键**：保留本 fork 的采样点参数化，等内核支持 kprobe 或驱动上报侧键。
+
+驱动是内置的（`/proc/modules` 为空），触摸 IC 为 Novatek NT36523
+（`/dmesg` 里 `novatek_nt36523_k82_fw01_pen.bin`），与 liuqin 的 nt36532 同属
+Novatek 笔驱动代码族，若走 B 路线，改动点相近。
+
