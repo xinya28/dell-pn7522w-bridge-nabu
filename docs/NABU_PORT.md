@@ -91,7 +91,35 @@ C 程序（`src/dell_pen_bridge.c`）只按**字节序号**解释数据，不关
   不再依赖 Zig/musl；
 - 未在 liuqin 上回归验证。
 
-## 2026-11-25 实机结论（nabu，HyperOS OS3.0.304.0.WNSCNXM）
+## 2026-11-26 探针结论：侧键不在笔帧里
+
+用 `fastboot boot` 临时启动一个打过 printk 探针的内核（探针挂在 `nvt_ts_work_func`
+的笔上报路径，打印 `sp+0x6a` 起的 40 字节），共抓到 3997 帧（悬停 + 落笔 + 按侧键）：
+
+- 第 0 字节（`point_data[66]`）= `0x01`，始终是有效笔帧；
+- 第 11 字节（`point_data[77]`，驱动里 `pen_btn1 = data[77] & 1`、`pen_btn2 = (data[77] >> 1) & 1`）
+  **3997 帧全部是 `0x00`**，落笔并按住侧键时也不变；
+- 驱动源码（`Re-s/xiaomi_kernel_nabu` 的 nt36523）确实会上报
+  `BTN_STYLUS/BTN_STYLUS2`（`input_report_key(ts->pen_input_dev, BTN_STYLUS, pen_btn1)`），
+  只是这一帧里按钮位永远是 0。
+
+结论：**戴尔 PN7522W 的侧键在 nabu 的触控固件/笔协议里根本没有被发送**，不是驱动丢掉的，
+也不是 kprobe 能读出来的——所以侧键桥接在这台机器上无解，除非换笔或改触控固件。
+顶部蓝牙键不受影响，已经可用。
+
+## 模块状态显示
+
+`module.prop` 的 `description` 现在由 `control.sh refresh` 实时改写，格式：
+
+```text
+顶部键：运行中；笔：已连接；侧键：本内核不支持
+```
+
+`service.sh` 启动后每 30 秒刷新一次，KernelSU 模块页重新进入即可看到最新状态；
+暂停/恢复、启停时也会立即刷新。作者字段为 `xinya28`。
+
+
+## 2026-11-25 实机结论（kprobe 不可用）
 
 测试机内核 `4.14.180-moon-os3-ga5805c039`（moon clang 20.0.0）。结论：**原项目的
 kprobe 方案在这台机器上无法运行**，需要内核层改动。
@@ -100,7 +128,8 @@ kprobe 方案在这台机器上无法运行**，需要内核层改动。
    `BTN_STYLUS`、`BTN_STYLUS2`，但实测从不产生这两个事件。用
    `getevent -lt` 抓全部输入设备、让笔保持悬停并按两个侧键，只看到
    `ABS_X/ABS_Y/ABS_TILT_X/ABS_TILT_Y/ABS_DISTANCE` 和 `BTN_DIGI`，
-   触屏节点（event3）也没有任何对应事件。侧键状态在驱动里被丢弃。
+   触屏节点（event3）也没有任何对应事件。后来用内核探针确认：不是驱动丢弃，
+   而是笔帧里根本没有按钮位（见上一节）。
 2. 内核配置（`/proc/config.gz`）：
 
    ```text

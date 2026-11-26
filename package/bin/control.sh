@@ -62,6 +62,24 @@ native_alive() {
 }
 service_alive() { owned_pid "$RUNDIR/service.pid" "$MODDIR/bin/control.sh run"; }
 
+# 把当前状态写回 module.prop 的 description，KernelSU 模块页刷新后即可看到。
+update_desc() {
+  state='未运行'; conn='未连接'
+  top=/dev/dell_pen_top_liuqin/status.json
+  if [ -f "$top" ]; then
+    grep -q '"running":true' "$top" 2>/dev/null && state='运行中'
+    grep -q '"enabled":true' "$top" 2>/dev/null || state='已暂停'
+    grep -q '"connected":true' "$top" 2>/dev/null && conn='已连接'
+  fi
+  [ -e "$MODDIR/paused" ] && state='已暂停'
+  [ -f "$MODDIR/module.prop" ] || return 0
+  desc="顶部键：$state；笔：$conn；侧键：本内核不支持"
+  tmp="$MODDIR/module.prop.tmp"
+  sed "s|^description=.*|description=$desc|" "$MODDIR/module.prop" > "$tmp" 2>/dev/null &&
+    mv -f "$tmp" "$MODDIR/module.prop"
+  return 0
+}
+
 stop_native() {
   if native_alive; then
     kill -TERM "$PID" 2>/dev/null
@@ -153,6 +171,7 @@ start_service() {
   "$BB" sh "$MODDIR/bin/top-control.sh" start
   if [ "$NO_PROBE" = 1 ]; then
     echo '此内核没有可用的 kprobe：侧键桥接不可用，已启用顶部键。'
+    update_desc
     return 0
   fi
   setup_runtime || return 1
@@ -167,7 +186,7 @@ start_service() {
 
 stop_service() {
   "$BB" sh "$MODDIR/bin/top-control.sh" stop
-  if [ "$NO_PROBE" = 1 ]; then echo '顶部键已停止。'; return 0; fi
+  if [ "$NO_PROBE" = 1 ]; then echo '顶部键已停止。'; update_desc; return 0; fi
   setup_runtime || return 1
   touch "$RUNDIR/stop"
   if service_alive; then kill -TERM "$PID" 2>/dev/null; fi
@@ -207,10 +226,12 @@ case "$MODE" in
       if [ -e "$MODDIR/paused" ]; then
         rm -f "$MODDIR/paused"
         "$BB" sh "$MODDIR/bin/top-control.sh" start
+        update_desc
         echo '已恢复顶部键。'
       else
         touch "$MODDIR/paused"
         "$BB" sh "$MODDIR/bin/top-control.sh" stop
+        update_desc
         echo '已暂停顶部键。'
       fi
       exit 0
@@ -229,8 +250,9 @@ case "$MODE" in
       echo '已暂停；再次点击动作按钮恢复。'
     fi
     ;;
+  refresh) update_desc; exit 0 ;;
   status)
-    if [ "$NO_PROBE" = 1 ]; then "$BB" sh "$MODDIR/bin/top-config.sh" status; exit 0; fi
+    if [ "$NO_PROBE" = 1 ]; then "$BB" sh "$MODDIR/bin/top-config.sh" status; update_desc; exit 0; fi
     if native_alive; then echo '运行中'; else echo '未运行'; fi
     [ ! -f "$RUNDIR/status.json" ] || cat "$RUNDIR/status.json"
     ;;
